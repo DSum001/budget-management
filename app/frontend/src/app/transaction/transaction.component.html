@@ -1,0 +1,306 @@
+<div class="container">
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading-overlay">
+    <div class="loading-spinner">
+      <div class="spinner"></div>
+      <p>Loading...</p>
+    </div>
+  </div>
+
+  <!-- Error Message -->
+  <div *ngIf="errorMessage" class="error-banner">
+    <span class="error-text">{{ errorMessage }}</span>
+    <button class="btn-retry" (click)="loadTransactions()">Retry</button>
+  </div>
+
+  <div class="header">
+    <div class="header-content">
+      <h1>Transactions</h1>
+      <p class="subtitle">Track your finances</p>
+    </div>
+    <button class="btn-primary" (click)="toggleForm()">
+      {{ showForm ? 'Cancel' : 'Add Transaction' }}
+    </button>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="summary-cards">
+    <div class="card income-card">
+      <div class="card-label">Total Income</div>
+      <div class="card-amount">{{ totalIncome | number : '1.0-0' }}</div>
+      <div class="card-detail">{{ transactionStats.incomeCount }} transactions</div>
+    </div>
+    <div class="card expense-card">
+      <div class="card-label">Total Expenses</div>
+      <div class="card-amount">{{ totalExpense | number : '1.0-0' }}</div>
+      <div class="card-detail">{{ transactionStats.expenseCount }} transactions</div>
+    </div>
+    <div class="card balance-card" [ngClass]="{ negative: balance < 0 }">
+      <div class="card-label">Total Balance</div>
+      <div class="card-amount">{{ balance | number : '1.0-0' }}</div>
+      <div class="card-detail">{{ balance >= 0 ? 'Positive' : 'Negative' }}</div>
+    </div>
+  </div>
+
+  <!-- Period Filter and Remaining Balance -->
+  <div class="period-section">
+    <div class="period-header">
+      <h2>Balance by Period</h2>
+      <div class="period-filter">
+        <label>Select Period:</label>
+        <select [(ngModel)]="filterPeriod" (ngModelChange)="onPeriodChange()" class="period-select">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="period-cards" *ngIf="remainingBalanceData">
+      <div class="period-card period-income">
+        <div class="period-label">Income{{ periodLabel }}</div>
+        <div class="period-amount">{{ periodIncome | number : '1.2-2' }} ฿</div>
+      </div>
+      <div class="period-card period-expense">
+        <div class="period-label">Expenses{{ periodLabel }}</div>
+        <div class="period-amount">{{ periodExpense | number : '1.2-2' }} ฿</div>
+      </div>
+      <div class="period-card period-remaining" [ngClass]="{ negative: periodRemaining < 0 }">
+        <div class="period-label">Remaining{{ periodLabel }}</div>
+        <div class="period-amount">{{ periodRemaining | number : '1.2-2' }} ฿</div>
+      </div>
+    </div>
+
+    <!-- Budget Info if available -->
+    <div class="budget-info" *ngIf="remainingBalanceData?.budget">
+      <h3>Budget{{ periodLabel }}</h3>
+      <div class="budget-progress">
+        <div class="budget-bar">
+          <div
+            class="budget-fill"
+            [style.width.%]="remainingBalanceData.budget.percentage"
+            [ngClass]="{
+              warning: remainingBalanceData.budget.percentage >= 80,
+              danger: remainingBalanceData.budget.percentage >= 100
+            }"
+          ></div>
+        </div>
+        <div class="budget-stats">
+          <span>Spent: {{ remainingBalanceData.budget.totalSpent | number : '1.0-0' }} ฿</span>
+          <span>Budget: {{ remainingBalanceData.budget.totalBudget | number : '1.0-0' }} ฿</span>
+          <span>Remaining: {{ remainingBalanceData.budget.remaining | number : '1.0-0' }} ฿</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expense by Category -->
+    <div class="category-breakdown" *ngIf="remainingBalanceData?.expenseByCategory?.length > 0">
+      <h3>Expenses by Category{{ periodLabel }}</h3>
+      <div class="category-list">
+        <div class="category-item" *ngFor="let item of remainingBalanceData.expenseByCategory">
+          <div class="category-info">
+            <span class="category-name">{{ item.categoryName || 'Unspecified' }}</span>
+            <span class="category-count">{{ item.count }} transactions</span>
+          </div>
+          <div class="category-amount">{{ item.total | number : '1.2-2' }} ฿</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Transaction Form -->
+  <div class="form-container" *ngIf="showForm">
+    <h2>Add New Transaction</h2>
+    <form (ngSubmit)="onSubmit()">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Type</label>
+          <select [(ngModel)]="newTransaction.type" name="type" required>
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Category</label>
+          <select [(ngModel)]="newTransaction.category" name="category" required>
+            <option value="">Select Category</option>
+            <option *ngFor="let cat of currentCategories" [value]="cat">{{ cat }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Amount (฿)</label>
+          <input
+            type="number"
+            [(ngModel)]="newTransaction.amount"
+            name="amount"
+            placeholder="0.00"
+            step="0.01"
+            min="0"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" [(ngModel)]="newTransaction.date" name="date" required />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Description</label>
+        <textarea
+          [(ngModel)]="newTransaction.description"
+          name="description"
+          placeholder="Add note..."
+          rows="3"
+        ></textarea>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" (click)="toggleForm()">Cancel</button>
+        <button type="submit" class="btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-container">
+    <div class="filters-grid">
+      <div class="filter-group">
+        <input
+          type="text"
+          [(ngModel)]="searchTerm"
+          (ngModelChange)="onFilterChange()"
+          placeholder="Search..."
+          class="search-input"
+        />
+      </div>
+
+      <div class="filter-group">
+        <select [(ngModel)]="filterType" (ngModelChange)="onFilterChange()">
+          <option value="all">All</option>
+          <option value="income">Income</option>
+          <option value="expense">Expenses</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <select [(ngModel)]="filterCategory" (ngModelChange)="onFilterChange()">
+          <option value="">Category</option>
+          <option *ngFor="let cat of allCategories" [value]="cat">{{ cat }}</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <button class="btn-clear" (click)="clearFilters()">Clear</button>
+      </div>
+
+      <div class="filter-info">
+        <span class="info-text">{{ filteredTransactions.length }} / {{ transactions.length }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-container">
+    <div *ngIf="filteredTransactions.length === 0" class="empty-state">
+      <p>No transactions found</p>
+    </div>
+
+    <div class="table-wrapper" *ngIf="filteredTransactions.length > 0">
+      <table>
+        <thead>
+          <tr>
+            <th (click)="setSortBy('date')" class="sortable">
+              Date
+              <span class="sort-icon" *ngIf="sortBy === 'date'">
+                {{ sortOrder === 'asc' ? '↑' : '↓' }}
+              </span>
+            </th>
+            <th>Type</th>
+            <th (click)="setSortBy('category')" class="sortable">
+              Category
+              <span class="sort-icon" *ngIf="sortBy === 'category'">
+                {{ sortOrder === 'asc' ? '↑' : '↓' }}
+              </span>
+            </th>
+            <th>Description</th>
+            <th (click)="setSortBy('amount')" class="text-right sortable">
+              Amount
+              <span class="sort-icon" *ngIf="sortBy === 'amount'">
+                {{ sortOrder === 'asc' ? '↑' : '↓' }}
+              </span>
+            </th>
+            <th class="text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let transaction of paginatedTransactions" class="transaction-row">
+            <td class="date-cell">
+              <div class="date-display">
+                <span class="date">{{ transaction.date | date : 'dd/MM/yyyy' }}</span>
+                <span class="time">{{ transaction.date | date : 'HH:mm' }}</span>
+              </div>
+            </td>
+            <td>
+              <span class="badge" [ngClass]="transaction.type">
+                {{ transaction.type === 'income' ? 'Income' : 'Expense' }}
+              </span>
+            </td>
+            <td>
+              <span class="category-tag">{{ transaction.category }}</span>
+            </td>
+            <td class="description-cell">
+              <span [title]="transaction.description">
+                {{ transaction.description || '-' }}
+              </span>
+            </td>
+            <td class="text-right amount-cell" [ngClass]="transaction.type">
+              <span class="amount-value">
+                {{ transaction.type === 'income' ? '+' : '-' }}
+                {{ transaction.amount | number : '1.2-2' }} ฿
+              </span>
+            </td>
+            <td class="text-center actions-cell">
+              <button
+                class="btn-delete"
+                (click)="deleteTransaction(transaction._id!)"
+                title="Delete transaction"
+              >
+                Delete
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination" *ngIf="totalPages > 1">
+      <button class="page-btn" (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1">
+        Previous
+      </button>
+
+      <button
+        *ngFor="let page of pageNumbers"
+        class="page-btn"
+        [ngClass]="{ active: page === currentPage }"
+        (click)="changePage(page)"
+      >
+        {{ page }}
+      </button>
+
+      <button
+        class="page-btn"
+        (click)="changePage(currentPage + 1)"
+        [disabled]="currentPage === totalPages"
+      >
+        Next
+      </button>
+    </div>
+  </div>
+</div>
