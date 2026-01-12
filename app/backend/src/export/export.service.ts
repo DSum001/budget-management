@@ -176,7 +176,7 @@ export class ExportService {
 
   async exportBudgetsToCSV(userId: string): Promise<string> {
     const budgets = await this.budgetModel
-      .find({ userId: new Types.ObjectId(userId) })
+      .find({ userId: userId })
       .populate('category', 'name')
       .sort({ startDate: -1 })
       .lean();

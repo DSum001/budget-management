@@ -1,0 +1,144 @@
+<div class="category-page">
+  <div class="page-header">
+    <h1>จัดการหมวดหมู่</h1>
+    <button class="btn-primary" (click)="showForm = !showForm">
+      {{ showForm ? 'ยกเลิก' : '+ เพิ่มหมวดหมู่' }}
+    </button>
+  </div>
+
+  @if (errorMessage) {
+  <div class="error-message">{{ errorMessage }}</div>
+  } @if (showForm) {
+  <div class="category-form">
+    <h2>{{ editingCategory ? 'แก้ไขหมวดหมู่' : 'สร้างหมวดหมู่ใหม่' }}</h2>
+    <form (ngSubmit)="saveCategory()">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="name">ชื่อหมวดหมู่ *</label>
+          <input
+            type="text"
+            id="name"
+            [(ngModel)]="currentCategory.name"
+            name="name"
+            required
+            placeholder="เช่น อาหาร, เดินทาง, เงินเดือน"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="type">ประเภท *</label>
+          <select id="type" [(ngModel)]="currentCategory.type" name="type" required>
+            <option value="income">รายรับ</option>
+            <option value="expense">รายจ่าย</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="icon">ไอคอน (Emoji)</label>
+          <input
+            type="text"
+            id="icon"
+            [(ngModel)]="currentCategory.icon"
+            name="icon"
+            placeholder="🍔"
+            maxlength="2"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="color">สี</label>
+          <input type="color" id="color" [(ngModel)]="currentCategory.color" name="color" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="description">รายละเอียด</label>
+        <textarea
+          id="description"
+          [(ngModel)]="currentCategory.description"
+          name="description"
+          rows="2"
+          placeholder="รายละเอียดเพิ่มเติม"
+        ></textarea>
+      </div>
+
+      <div class="form-group checkbox">
+        <label>
+          <input type="checkbox" [(ngModel)]="currentCategory.isActive" name="isActive" />
+          <span>ใช้งานอยู่</span>
+        </label>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" [disabled]="loading">
+          {{ loading ? 'กำลังบันทึก...' : 'บันทึก' }}
+        </button>
+        <button type="button" class="btn-secondary" (click)="cancelEdit()">ยกเลิก</button>
+      </div>
+    </form>
+  </div>
+  } @if (loading && categories.length === 0) {
+  <div class="loading">กำลังโหลดข้อมูล...</div>
+  } @else if (!loading && categories.length === 0) {
+  <div class="empty-state">
+    <p>ยังไม่มีหมวดหมู่</p>
+    <p class="hint">เพิ่มหมวดหมู่เพื่อจัดกลุ่มรายรับรายจ่ายของคุณ</p>
+  </div>
+  } @else if (categories.length > 0) {
+  <div class="categories-tabs">
+    <button class="tab-button" [class.active]="activeTab === 'all'" (click)="activeTab = 'all'">
+      ทั้งหมด ({{ categories.length }})
+    </button>
+    <button
+      class="tab-button"
+      [class.active]="activeTab === 'income'"
+      (click)="activeTab = 'income'"
+    >
+      รายรับ ({{ incomeCategories.length }})
+    </button>
+    <button
+      class="tab-button"
+      [class.active]="activeTab === 'expense'"
+      (click)="activeTab = 'expense'"
+    >
+      รายจ่าย ({{ expenseCategories.length }})
+    </button>
+  </div>
+
+  <div class="categories-grid">
+    @for (category of filteredCategories; track category._id) {
+    <div class="category-card" [class.inactive]="!category.isActive">
+      <div class="category-header">
+        <div class="category-icon-wrapper" [style.background-color]="category.color || '#f0f0f0'">
+          <span class="category-icon">{{ category.icon || '📂' }}</span>
+        </div>
+        <div class="category-info">
+          <h3>{{ category.name }}</h3>
+          <span class="category-type" [class.income]="category.type === 'income'">
+            {{ category.type === 'income' ? 'รายรับ' : 'รายจ่าย' }}
+          </span>
+        </div>
+        @if (!category.isActive) {
+        <span class="badge inactive">ไม่ใช้งาน</span>
+        }
+      </div>
+
+      @if (category.description) {
+      <p class="category-description">{{ category.description }}</p>
+      }
+
+      <div class="category-actions">
+        <button class="btn-edit" (click)="editCategory(category)">แก้ไข</button>
+        <button class="btn-delete" (click)="deleteCategory(category._id!)">ลบ</button>
+      </div>
+    </div>
+    }
+  </div>
+  }
+
+  <div class="page-footer">
+    <a routerLink="/dashboard" class="btn-back">← กลับสู่หน้าหลัก</a>
+  </div>
+</div>

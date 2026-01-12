@@ -2,45 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-
-export interface Transaction {
-  _id: string;
-  type: 'income' | 'expense' | 'transfer';
-  amount: number;
-  date: Date;
-  description: string;
-  note?: string;
-  category: any;
-  account: any;
-  tags?: string[];
-  location?: string;
-  attachments?: string[];
-  isRecurring: boolean;
-  recurringFrequency?: 'daily' | 'weekly' | 'monthly' | 'yearly';
-  recurringEndDate?: Date;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface TransactionFilters {
-  type?: string;
-  categoryId?: string;
-  accountId?: string;
-  startDate?: string;
-  endDate?: string;
-  tags?: string;
-  search?: string;
-  page?: number;
-  limit?: number;
-}
-
-export interface TransactionResponse {
-  transactions: Transaction[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
+import { Transaction, TransactionFilters, TransactionResponse, TransferDto } from '../models';
 
 @Injectable({
   providedIn: 'root',
@@ -48,11 +10,7 @@ export interface TransactionResponse {
 export class TransactionService {
   private apiUrl = `${environment.apiUrl}/transactions`;
 
-  constructor(private http: HttpClient) {
-    console.log('✅ TransactionService initialized');
-    console.log('🔗 API URL:', this.apiUrl);
-    console.log('🌍 Environment:', environment.production ? 'Production' : 'Development');
-  }
+  constructor(private http: HttpClient) {}
 
   getAll(filters?: TransactionFilters): Observable<TransactionResponse> {
     let params = new HttpParams();
@@ -86,13 +44,7 @@ export class TransactionService {
     return this.http.post<void>(`${this.apiUrl}/bulk-delete`, { ids });
   }
 
-  transfer(data: {
-    fromAccountId: string;
-    toAccountId: string;
-    amount: number;
-    date: Date;
-    description?: string;
-  }): Observable<any> {
+  transfer(data: TransferDto): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/transfer`, data);
   }
 

@@ -1,0 +1,154 @@
+<div class="account-page">
+  <div class="page-header">
+    <h1>บัญชีและกระเป๋าเงิน</h1>
+    <button class="btn-primary" (click)="showForm = !showForm">
+      {{ showForm ? 'ยกเลิก' : '+ เพิ่มบัญชี' }}
+    </button>
+  </div>
+
+  @if (errorMessage) {
+  <div class="error-message">{{ errorMessage }}</div>
+  } @if (showForm) {
+  <div class="account-form">
+    <h2>{{ editingAccount ? 'แก้ไขบัญชี' : 'เพิ่มบัญชีใหม่' }}</h2>
+    <form (ngSubmit)="saveAccount()">
+      <div class="form-group">
+        <label for="name">ชื่อบัญชี *</label>
+        <input
+          type="text"
+          id="name"
+          [(ngModel)]="currentAccount.name"
+          name="name"
+          required
+          placeholder="เช่น กรุงไทย, กระเป๋าเงินสด"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="type">ประเภทบัญชี *</label>
+        <select id="type" [(ngModel)]="currentAccount.type" name="type" required>
+          <option value="bank">ธนาคาร</option>
+          <option value="cash">เงินสด</option>
+          <option value="credit_card">บัตรเครดิต</option>
+          <option value="e_wallet">กระเป๋าเงินอิเล็กทรอนิกส์</option>
+          <option value="investment">การลงทุน</option>
+          <option value="crypto">สกุลเงินดิจิทัล</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="balance">ยอดเงินคงเหลือ (฿) *</label>
+        <input
+          type="number"
+          id="balance"
+          [(ngModel)]="currentAccount.balance"
+          name="balance"
+          required
+          step="0.01"
+          placeholder="0.00"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="currency">สกุลเงิน</label>
+        <input
+          type="text"
+          id="currency"
+          [(ngModel)]="currentAccount.currency"
+          name="currency"
+          placeholder="THB"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="description">หมายเหตุ</label>
+        <textarea
+          id="description"
+          [(ngModel)]="currentAccount.description"
+          name="description"
+          rows="3"
+          placeholder="รายละเอียดเพิ่มเติม"
+        ></textarea>
+      </div>
+
+      <div class="form-group checkbox">
+        <label>
+          <input
+            type="checkbox"
+            [(ngModel)]="currentAccount.includeInTotal"
+            name="includeInTotal"
+          />
+          <span>รวมในยอดรวม</span>
+        </label>
+      </div>
+
+      <div class="form-group checkbox">
+        <label>
+          <input type="checkbox" [(ngModel)]="currentAccount.isArchived" name="isArchived" />
+          <span>เก็บถาวร (ไม่แสดงในรายการ)</span>
+        </label>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" [disabled]="loading">
+          {{ loading ? 'กำลังบันทึก...' : 'บันทึก' }}
+        </button>
+        <button type="button" class="btn-secondary" (click)="cancelEdit()">ยกเลิก</button>
+      </div>
+    </form>
+  </div>
+  } @if (loading && accounts.length === 0) {
+  <div class="loading">กำลังโหลดข้อมูล...</div>
+  } @else if (!loading && accounts.length === 0) {
+  <div class="empty-state">
+    <p>ยังไม่มีบัญชี</p>
+    <p class="hint">เริ่มต้นด้วยการเพิ่มบัญชีหรือกระเป๋าเงินของคุณ</p>
+  </div>
+  } @else if (accounts.length > 0) {
+  <div class="accounts-summary">
+    <div class="summary-card total">
+      <h3>ยอดรวมทั้งหมด</h3>
+      <p class="amount">฿{{ formatNumber(totalBalance) }}</p>
+    </div>
+  </div>
+
+  <div class="accounts-grid">
+    @for (account of accounts; track account._id) {
+    <div class="account-card" [class.inactive]="account.isArchived">
+      <div class="account-header">
+        <div class="account-info">
+          <span class="account-icon">{{ getAccountIcon(account.type) }}</span>
+          <div>
+            <h3>{{ account.name }}</h3>
+            <span class="account-type">{{ getAccountTypeLabel(account.type) }}</span>
+          </div>
+        </div>
+        @if (account.isArchived) {
+        <span class="badge inactive">เก็บถาวร</span>
+        }
+      </div>
+
+      <div class="account-balance">
+        <span class="label">ยอดคงเหลือ</span>
+        <span class="amount" [class.negative]="account.balance < 0">
+          {{ account.currency }} {{ formatNumber(account.balance) }}
+        </span>
+      </div>
+
+      @if (account.description) {
+      <p class="account-description">{{ account.description }}</p>
+      }
+
+      <div class="account-actions">
+        <button class="btn-edit" (click)="editAccount(account)">แก้ไข</button>
+        <button class="btn-delete" (click)="deleteAccount(account._id!)">ลบ</button>
+      </div>
+    </div>
+    }
+  </div>
+  }
+
+  <div class="page-footer">
+    <a routerLink="/dashboard" class="btn-back">← กลับสู่หน้าหลัก</a>
+  </div>
+</div>

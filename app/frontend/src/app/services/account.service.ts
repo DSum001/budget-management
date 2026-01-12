@@ -2,32 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-
-export interface Account {
-  _id: string;
-  name: string;
-  type: 'cash' | 'bank' | 'credit_card' | 'e_wallet' | 'investment' | 'crypto';
-  balance: number;
-  currency: string;
-  color?: string;
-  icon?: string;
-  includeInTotal: boolean;
-  isArchived: boolean;
-  institution?: string;
-  accountNumber?: string;
-  description?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface AccountSummary {
-  totalBalance: number;
-  byType: {
-    type: string;
-    total: number;
-    count: number;
-  }[];
-}
+import { Account, AccountSummary } from '../models';
 
 @Injectable({
   providedIn: 'root',

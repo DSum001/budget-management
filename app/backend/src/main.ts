@@ -1,13 +1,28 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { LoggerService } from './common/logger/logger.service';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import helmet from 'helmet';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+  });
 
-  // Enable CORS with credentials
+  // Custom logger
+  const logger = app.get(LoggerService);
+  app.useLogger(logger);
+
+  // Security middleware
+  app.use(helmet());
+
+  // Enable CORS with environment variables
+  const corsOrigins = process.env.CORS_ORIGIN?.split(',') || [
+    'http://localhost:4200',
+  ];
   app.enableCors({
-    origin: ['http://localhost:4200', 'http://localhost:3000'],
+    origin: corsOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
@@ -25,7 +40,11 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(process.env.PORT ?? 3000);
-  console.log(`Application is running on: ${await app.getUrl()}`);
+  // Global exception filter
+  app.useGlobalFilters(new HttpExceptionFilter(logger));
+
+  const port = parseInt(process.env.PORT || '3000', 10);
+  await app.listen(port);
+  logger.log(`Application is running on: ${await app.getUrl()}`);
 }
 bootstrap();

@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Transaction } from '../transaction/transaction-v2.schema';
+import {
+  Transaction,
+  TransactionType,
+} from '../transaction/transaction-v2.schema';
 import { Budget } from '../budget/budget.schema';
 import { Category } from '../category/category.schema';
 import { Account } from '../account/account.schema';
@@ -380,7 +383,7 @@ export class ReportService {
     // หา budgets ที่ active ในเดือนนี้
     const budgets = await this.budgetModel
       .find({
-        userId: new Types.ObjectId(userId),
+        userId: userId,
         isActive: true,
         startDate: { $lte: endDate },
         $or: [{ endDate: { $gte: startDate } }, { endDate: null }],
@@ -472,7 +475,7 @@ export class ReportService {
 
     let balance = account.balance;
     const history = transactions.map((tx) => {
-      if (tx.type === 'income') {
+      if (tx.type === TransactionType.INCOME) {
         balance -= tx.amount;
       } else {
         balance += tx.amount;
@@ -492,7 +495,10 @@ export class ReportService {
     balance = account.balance;
     for (const item of history) {
       item.balanceAfter = balance;
-      if (transactions.find((tx) => tx.date === item.date)?.type === 'income') {
+      if (
+        transactions.find((tx) => tx.date === item.date)?.type ===
+        TransactionType.INCOME
+      ) {
         balance -= item.amount;
       } else {
         balance += item.amount;
@@ -628,9 +634,14 @@ export class ReportService {
     ]);
 
     // ตรวจสอบงบประมาณในช่วงเวลานี้
-    let budgetInfo = null;
+    let budgetInfo: null | {
+      totalBudget: number;
+      totalSpent: number;
+      remaining: number;
+      percentage: number;
+    } = null;
     const budgets = await this.budgetModel.find({
-      userId: new Types.ObjectId(userId),
+      userId: userId,
       isActive: true,
       period:
         period === 'daily'

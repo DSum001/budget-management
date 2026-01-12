@@ -2,31 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-
-export interface SavingGoal {
-  _id: string;
-  name: string;
-  description?: string;
-  targetAmount: number;
-  currentAmount: number;
-  targetDate: Date;
-  status: 'active' | 'completed' | 'paused' | 'cancelled';
-  linkedAccountId?: string;
-  completedAt?: Date;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface GoalProgress {
-  targetAmount: number;
-  currentAmount: number;
-  remaining: number;
-  progressPercentage: number;
-  daysLeft: number;
-  monthlyRequired: number;
-  isOverdue: boolean;
-  isCompleted: boolean;
-}
+import { SavingGoal, GoalProgress } from '../models';
 
 @Injectable({
   providedIn: 'root',

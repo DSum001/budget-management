@@ -1,20 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { TransactionService } from './transaction.service';
+import { TransactionService } from '../services/transaction.service';
 import { ReportService } from '../services/report.service';
-
-export interface Transaction {
-  _id?: string;
-  type: 'income' | 'expense' | 'transfer';
-  category: string;
-  amount: number;
-  description: string;
-  date: Date;
-  note?: string;
-  tags?: string[];
-  account?: any;
-}
+import { CategoryService } from '../services/category.service';
+import { AccountService } from '../services/account.service';
+import { Category, Account, Transaction } from '../models';
 
 @Component({
   selector: 'app-transaction',
@@ -26,6 +17,8 @@ export interface Transaction {
 export class TransactionComponent implements OnInit {
   transactions: Transaction[] = [];
   filteredTransactions: Transaction[] = [];
+  categories: Category[] = [];
+  accounts: Account[] = [];
   showForm = false;
   isLoading = false;
   errorMessage = '';
@@ -43,36 +36,67 @@ export class TransactionComponent implements OnInit {
   currentPage = 1;
   itemsPerPage = 10;
 
-  newTransaction: Transaction = {
+  newTransaction: Partial<Transaction> = {
     type: 'income',
-    category: '',
+    category: null,
+    categoryId: '',
+    account: null,
+    accountId: '',
     amount: 0,
     description: '',
     date: new Date(),
   };
 
-  incomeCategories = ['Salary', 'Freelance', 'Investment', 'Gift', 'Other'];
-  expenseCategories = [
-    'Food',
-    'Transportation',
-    'Utilities',
-    'Entertainment',
-    'Shopping',
-    'Healthcare',
-    'Other',
-  ];
-
   constructor(
     private transactionService: TransactionService,
-    private reportService: ReportService
-  ) {
-    console.log('TransactionComponent initialized');
-  }
+    private reportService: ReportService,
+    private categoryService: CategoryService,
+    private accountService: AccountService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit() {
-    console.log('ngOnInit called - loading transactions...');
+    // Initialize with default values to prevent UI blocking
+    this.remainingBalanceData = {
+      summary: {
+        totalIncome: 0,
+        totalExpense: 0,
+        netAmount: 0,
+      },
+    };
+
+    this.loadCategories();
+    this.loadAccounts();
     this.loadTransactions();
     this.loadRemainingBalance();
+  }
+
+  loadCategories() {
+    this.categoryService.getAll().subscribe({
+      next: (data: Category[]) => {
+        this.categories = Array.isArray(data) ? data : [];
+        this.cdr.detectChanges();
+      },
+      error: (err: any) => {
+        this.categories = [];
+        this.errorMessage = 'Failed to load categories';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  loadAccounts() {
+    this.accountService.getAll().subscribe({
+      next: (data: Account[]) => {
+        this.accounts = Array.isArray(data) ? data : [];
+        this.cdr.detectChanges();
+      },
+      error: (err: any) => {
+        this.accounts = [];
+        this.errorMessage = 'Failed to load accounts';
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   loadTransactions() {
@@ -80,27 +104,49 @@ export class TransactionComponent implements OnInit {
     this.errorMessage = '';
 
     this.transactionService.getTransactions().subscribe({
-      next: (data) => {
-        this.transactions = data;
-        this.applyFilters();
+      next: (data: Transaction[]) => {
+        try {
+          this.transactions = Array.isArray(data) ? data : [];
+          this.applyFilters();
+        } catch (error) {
+          this.errorMessage = 'Error processing transactions';
+        }
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
-      error: (err) => {
+      error: (err: any) => {
+        this.transactions = [];
+        this.filteredTransactions = [];
         this.errorMessage = `Unable to load data: ${
-          err.message || 'Please check if the backend is running'
+          err.error?.message || err.message || 'Please check if the backend is running'
         }`;
         this.isLoading = false;
+        this.cdr.detectChanges();
+      },
+      complete: () => {
+        this.isLoading = false;
+        this.cdr.detectChanges();
       },
     });
   }
 
   loadRemainingBalance() {
+    // Don't block the UI if this fails
     this.reportService.getRemainingBalance(this.filterPeriod).subscribe({
       next: (data) => {
         this.remainingBalanceData = data;
+        this.cdr.detectChanges();
       },
-      error: (err) => {
-        console.error('Error loading remaining balance:', err);
+      error: () => {
+        // Set default values to prevent UI issues
+        this.remainingBalanceData = {
+          summary: {
+            totalIncome: 0,
+            totalExpense: 0,
+            netAmount: 0,
+          },
+        };
+        this.cdr.detectChanges();
       },
     });
   }
@@ -110,47 +156,63 @@ export class TransactionComponent implements OnInit {
   }
 
   applyFilters() {
-    let filtered = [...this.transactions];
-
-    // Filter by type
-    if (this.filterType !== 'all') {
-      filtered = filtered.filter((t) => t.type === this.filterType);
-    }
-
-    // Filter by category
-    if (this.filterCategory) {
-      filtered = filtered.filter((t) => t.category === this.filterCategory);
-    }
-
-    // Search filter
-    if (this.searchTerm) {
-      const term = this.searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (t) =>
-          t.description?.toLowerCase().includes(term) || t.category.toLowerCase().includes(term)
-      );
-    }
-
-    // Sort
-    filtered.sort((a, b) => {
-      let comparison = 0;
-
-      switch (this.sortBy) {
-        case 'date':
-          comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
-          break;
-        case 'amount':
-          comparison = a.amount - b.amount;
-          break;
-        case 'category':
-          comparison = a.category.localeCompare(b.category);
-          break;
+    try {
+      if (!Array.isArray(this.transactions)) {
+        this.filteredTransactions = [];
+        return;
       }
 
-      return this.sortOrder === 'asc' ? comparison : -comparison;
-    });
+      let filtered = [...this.transactions];
 
-    this.filteredTransactions = filtered;
+      // Filter by type
+      if (this.filterType !== 'all') {
+        filtered = filtered.filter((t) => t.type === this.filterType);
+      }
+
+      // Filter by category
+      if (this.filterCategory) {
+        filtered = filtered.filter((t) => {
+          const categoryName = typeof t.category === 'string' ? t.category : t.category?.name;
+          return categoryName === this.filterCategory;
+        });
+      }
+
+      // Search filter
+      if (this.searchTerm) {
+        const term = this.searchTerm.toLowerCase();
+        filtered = filtered.filter((t) => {
+          const categoryName = typeof t.category === 'string' ? t.category : t.category?.name || '';
+          return (
+            t.description?.toLowerCase().includes(term) || categoryName.toLowerCase().includes(term)
+          );
+        });
+      }
+
+      // Sort
+      filtered.sort((a, b) => {
+        let comparison = 0;
+
+        switch (this.sortBy) {
+          case 'date':
+            comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+            break;
+          case 'amount':
+            comparison = a.amount - b.amount;
+            break;
+          case 'category':
+            const catA = typeof a.category === 'string' ? a.category : a.category?.name || '';
+            const catB = typeof b.category === 'string' ? b.category : b.category?.name || '';
+            comparison = catA.localeCompare(catB);
+            break;
+        }
+
+        return this.sortOrder === 'asc' ? comparison : -comparison;
+      });
+
+      this.filteredTransactions = filtered;
+    } catch (error) {
+      this.filteredTransactions = [];
+    }
   }
 
   onFilterChange() {
@@ -184,17 +246,25 @@ export class TransactionComponent implements OnInit {
   }
 
   onSubmit() {
-    if (this.newTransaction.category && this.newTransaction.amount > 0) {
+    if (
+      this.newTransaction.category &&
+      this.newTransaction.amount &&
+      this.newTransaction.amount > 0
+    ) {
+      this.isLoading = true;
       this.transactionService.addTransaction(this.newTransaction).subscribe({
-        next: (transaction) => {
+        next: (transaction: Transaction) => {
           this.transactions.unshift(transaction);
           this.applyFilters();
           this.resetForm();
           this.showForm = false;
+          this.isLoading = false;
+          this.cdr.detectChanges();
         },
-        error: (err) => {
-          console.error('Error adding transaction:', err);
-          alert('Failed to add transaction. Please try again.');
+        error: (err: any) => {
+          this.errorMessage = 'Failed to add transaction: ' + (err.error?.message || err.message);
+          this.isLoading = false;
+          this.cdr.detectChanges();
         },
       });
     }
@@ -202,14 +272,19 @@ export class TransactionComponent implements OnInit {
 
   deleteTransaction(id: string) {
     if (confirm('Are you sure you want to delete this transaction?')) {
+      this.isLoading = true;
       this.transactionService.deleteTransaction(id).subscribe({
         next: () => {
           this.transactions = this.transactions.filter((t) => t._id !== id);
           this.applyFilters();
+          this.isLoading = false;
+          this.cdr.detectChanges();
         },
-        error: (err) => {
-          console.error('Error deleting transaction:', err);
-          alert('Failed to delete transaction. Please try again.');
+        error: (err: any) => {
+          this.errorMessage =
+            'Failed to delete transaction: ' + (err.error?.message || err.message);
+          this.isLoading = false;
+          this.cdr.detectChanges();
         },
       });
     }
@@ -218,7 +293,10 @@ export class TransactionComponent implements OnInit {
   resetForm() {
     this.newTransaction = {
       type: 'income',
-      category: '',
+      category: null,
+      categoryId: '',
+      account: null,
+      accountId: '',
       amount: 0,
       description: '',
       date: new Date(),
@@ -226,7 +304,15 @@ export class TransactionComponent implements OnInit {
   }
 
   get currentCategories() {
-    return this.newTransaction.type === 'income' ? this.incomeCategories : this.expenseCategories;
+    return this.categories.filter((c) => c.type === this.newTransaction.type);
+  }
+
+  get incomeCategories() {
+    return this.categories.filter((c) => c.type === 'income');
+  }
+
+  get expenseCategories() {
+    return this.categories.filter((c) => c.type === 'expense');
   }
 
   get totalIncome() {
@@ -246,7 +332,9 @@ export class TransactionComponent implements OnInit {
   }
 
   get allCategories(): string[] {
-    const categories = new Set(this.transactions.map((t) => t.category));
+    const categories = new Set(
+      this.transactions.map((t) => t.category?.name || t.category).filter(Boolean)
+    );
     return Array.from(categories).sort();
   }
 

@@ -11,12 +11,6 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   const token = isBrowser ? localStorage.getItem('access_token') : null;
 
-  console.log('🔐 Auth Interceptor:', {
-    url: req.url,
-    hasToken: !!token,
-    token: token ? `${token.substring(0, 20)}...` : 'none',
-  });
-
   let clonedReq = req;
   if (token) {
     clonedReq = req.clone({

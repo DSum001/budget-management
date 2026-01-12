@@ -7,9 +7,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Transaction } from './transaction-v2.schema';
-import { CreateTransactionDto } from './dto/create-transaction-v2.dto';
-import { UpdateTransactionDto } from './dto/update-transaction-v2.dto';
-import { TransferDto } from './dto/transfer.dto';
+import { CreateTransactionDto, UpdateTransactionDto, TransferDto } from './dto';
 import { AccountService } from '../account/account.service';
 
 @Injectable()

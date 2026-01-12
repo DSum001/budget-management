@@ -2,19 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-
-export interface Dashboard {
-  overview: {
-    income: number;
-    expense: number;
-    balance: number;
-    month: number;
-    year: number;
-  };
-  byCategory: any[];
-  byAccount: any[];
-  recentTransactions: any[];
-}
+import { Dashboard } from '../models';
 
 @Injectable({
   providedIn: 'root',

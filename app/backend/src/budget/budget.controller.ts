@@ -11,8 +11,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { BudgetService } from './budget.service';
-import { CreateBudgetDto } from './dto/create-budget.dto';
-import { UpdateBudgetDto } from './dto/update-budget.dto';
+import { CreateBudgetDto, UpdateBudgetDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('budgets')
@@ -34,7 +33,7 @@ export class BudgetController {
   ) {
     return this.budgetService.findAll(req.user.userId, {
       period,
-      isActive: isActive === 'true',
+      isActive: isActive !== undefined ? isActive === 'true' : undefined,
       categoryId,
     });
   }

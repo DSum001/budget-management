@@ -11,9 +11,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { TransactionService } from './transaction.service';
-import { CreateTransactionDto } from './dto/create-transaction-v2.dto';
-import { UpdateTransactionDto } from './dto/update-transaction-v2.dto';
-import { TransferDto } from './dto/transfer.dto';
+import { CreateTransactionDto, UpdateTransactionDto, TransferDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('transactions')

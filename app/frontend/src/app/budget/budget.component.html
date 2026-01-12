@@ -1,0 +1,214 @@
+<div class="budget-page">
+  <div class="page-header">
+    <h1>การจัดการงบประมาณ</h1>
+    <button class="btn-primary" (click)="showForm = !showForm">
+      {{ showForm ? 'ยกเลิก' : '+ สร้างงบประมาณ' }}
+    </button>
+  </div>
+
+  @if (errorMessage) {
+  <div class="error-message">{{ errorMessage }}</div>
+  } @if (successMessage) {
+  <div class="success-message">{{ successMessage }}</div>
+  } @if (showForm) {
+  <div class="budget-form">
+    <h2>{{ editingBudget ? 'แก้ไขงบประมาณ' : 'สร้างงบประมาณใหม่' }}</h2>
+    <form (ngSubmit)="saveBudget()">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="name">ชื่องบประมาณ *</label>
+          <input
+            type="text"
+            id="name"
+            [(ngModel)]="currentBudget.name"
+            name="name"
+            required
+            placeholder="เช่น ค่าอาหาร, ค่าเดินทาง"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="amount">จำนวนเงิน (฿) *</label>
+          <input
+            type="number"
+            id="amount"
+            [(ngModel)]="currentBudget.amount"
+            name="amount"
+            required
+            step="0.01"
+            placeholder="0.00"
+          />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="period">ระยะเวลา *</label>
+          <select id="period" [(ngModel)]="currentBudget.period" name="period" required>
+            <option value="daily">รายวัน</option>
+            <option value="weekly">รายสัปดาห์</option>
+            <option value="monthly">รายเดือน</option>
+            <option value="yearly">รายปี</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="categoryId">หมวดหมู่</label>
+          <select id="categoryId" [(ngModel)]="currentBudget.categoryId" name="categoryId">
+            <option value="">-- ทุกหมวดหมู่ --</option>
+            @for (category of categories; track category._id) {
+            <option [value]="category._id">{{ category.name }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="startDate">วันที่เริ่มต้น *</label>
+          <input
+            type="date"
+            id="startDate"
+            [(ngModel)]="currentBudget.startDate"
+            name="startDate"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="endDate">วันที่สิ้นสุด</label>
+          <input type="date" id="endDate" [(ngModel)]="currentBudget.endDate" name="endDate" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="alertThreshold">แจ้งเตือนเมื่อใช้จ่ายถึง (%) </label>
+        <input
+          type="number"
+          id="alertThreshold"
+          [(ngModel)]="currentBudget.alertThreshold"
+          name="alertThreshold"
+          min="0"
+          max="100"
+          placeholder="80"
+        />
+        <small>เว้นว่างเพื่อไม่แจ้งเตือน</small>
+      </div>
+
+      <div class="form-group checkbox">
+        <label>
+          <input type="checkbox" [(ngModel)]="currentBudget.isActive" name="isActive" />
+          <span>ใช้งานอยู่</span>
+        </label>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" [disabled]="loading">
+          {{ loading ? 'กำลังบันทึก...' : 'บันทึก' }}
+        </button>
+        <button type="button" class="btn-secondary" (click)="cancelEdit()">ยกเลิก</button>
+      </div>
+    </form>
+  </div>
+  } @if (loading && budgets.length === 0) {
+  <div class="loading">กำลังโหลดข้อมูล...</div>
+  } @else if (!loading && budgets.length === 0) {
+  <div class="empty-state">
+    <p>ยังไม่มีงบประมาณ</p>
+    <p class="hint">เริ่มต้นวางแผนการเงินด้วยการสร้างงบประมาณ</p>
+  </div>
+  } @else if (budgets.length > 0) {
+  <div class="budget-summary">
+    <div class="summary-card">
+      <h3>งบประมาณทั้งหมด</h3>
+      <p class="amount">฿{{ formatNumber(totalBudget) }}</p>
+    </div>
+    <div class="summary-card">
+      <h3>ใช้ไปแล้ว</h3>
+      <p class="amount spent">฿{{ formatNumber(totalSpent) }}</p>
+    </div>
+    <div class="summary-card">
+      <h3>คงเหลือ</h3>
+      <p class="amount" [class.negative]="totalRemaining < 0">
+        ฿{{ formatNumber(totalRemaining) }}
+      </p>
+    </div>
+  </div>
+
+  <div class="budgets-list">
+    @for (budget of budgets; track budget._id) {
+    <div
+      class="budget-card"
+      [class.inactive]="!budget.isActive"
+      [class.exceeded]="budget.spent > budget.amount"
+    >
+      <div class="budget-header">
+        <div class="budget-info">
+          <h3>{{ budget.name }}</h3>
+          <span class="budget-period">{{ getPeriodLabel(budget.period) }}</span>
+          @if (budget.categoryName) {
+          <span class="category-badge">{{ budget.categoryName }}</span>
+          }
+        </div>
+        <div class="budget-status">
+          @if (!budget.isActive) {
+          <span class="badge inactive">ไม่ใช้งาน</span>
+          } @else if (getProgressPercentage(budget) > 100) {
+          <span class="badge exceeded">เกินงบ</span>
+          } @else if (budget.alertThreshold && getProgressPercentage(budget) >=
+          budget.alertThreshold) {
+          <span class="badge warning">ใกล้ถึงเป้า</span>
+          }
+        </div>
+      </div>
+
+      <div class="budget-progress">
+        <div class="progress-info">
+          <span>฿{{ formatNumber(budget.spent) }} / ฿{{ formatNumber(budget.amount) }}</span>
+          <span class="percentage">{{ getProgressPercentage(budget).toFixed(1) }}%</span>
+        </div>
+        <div class="progress-bar">
+          <div
+            class="progress-fill"
+            [style.width.%]="Math.min(getProgressPercentage(budget), 100)"
+            [class.warning]="getProgressPercentage(budget) >= (budget.alertThreshold || 80)"
+            [class.exceeded]="getProgressPercentage(budget) > 100"
+          ></div>
+        </div>
+      </div>
+
+      <div class="budget-details">
+        <div class="detail-item">
+          <span class="label">คงเหลือ:</span>
+          <span class="value" [class.negative]="budget.amount - budget.spent < 0">
+            ฿{{ formatNumber(budget.amount - budget.spent) }}
+          </span>
+        </div>
+        <div class="detail-item">
+          <span class="label">ระยะเวลา:</span>
+          <span class="value"
+            >{{ formatDate(budget.startDate) }} @if (budget.endDate) { -
+            {{ formatDate(budget.endDate) }} }
+          </span>
+        </div>
+      </div>
+
+      <div class="budget-actions">
+        <button class="btn-edit" (click)="editBudget(budget)" title="แก้ไขงบประมาณ">แก้ไข</button>
+        <button
+          class="btn-delete"
+          (click)="deleteBudget(budget._id!, budget.name)"
+          title="ลบงบประมาณ"
+        >
+          ลบ
+        </button>
+      </div>
+    </div>
+    }
+  </div>
+  }
+
+  <div class="page-footer">
+    <a routerLink="/dashboard" class="btn-back">← กลับสู่หน้าหลัก</a>
+  </div>
+</div>

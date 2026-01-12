@@ -5,9 +5,8 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Budget } from './budget.schema';
-import { CreateBudgetDto } from './dto/create-budget.dto';
-import { UpdateBudgetDto } from './dto/update-budget.dto';
+import { Budget, BudgetPeriod } from './budget.schema';
+import { CreateBudgetDto, UpdateBudgetDto } from './dto';
 
 @Injectable()
 export class BudgetService {
@@ -46,6 +45,7 @@ export class BudgetService {
       query.period = filters.period;
     }
 
+    // Only filter by isActive if explicitly specified
     if (filters.isActive !== undefined) {
       query.isActive = filters.isActive;
     }
@@ -54,11 +54,13 @@ export class BudgetService {
       query.categoryId = new Types.ObjectId(filters.categoryId);
     }
 
-    return this.budgetModel
+    const budgets = await this.budgetModel
       .find(query)
       .populate('categoryId', 'name icon color')
       .sort({ createdAt: -1 })
       .exec();
+
+    return budgets;
   }
 
   async findById(userId: string, budgetId: string): Promise<Budget> {
@@ -71,7 +73,11 @@ export class BudgetService {
       throw new NotFoundException('Budget not found');
     }
 
-    if (budget.userId.toString() !== userId) {
+    // Compare userId as both string and ObjectId
+    const userIdStr = userId.toString();
+    const budgetUserIdStr = budget.userId.toString();
+
+    if (budgetUserIdStr !== userIdStr) {
       throw new ForbiddenException(
         'You do not have permission to access this budget',
       );
@@ -111,7 +117,9 @@ export class BudgetService {
 
   async delete(userId: string, budgetId: string): Promise<void> {
     const budget = await this.findById(userId, budgetId);
-    await budget.deleteOne();
+    // Soft delete by setting isActive to false
+    budget.isActive = false;
+    await budget.save();
   }
 
   async getStatus(userId: string, budgetId: string): Promise<any> {
@@ -161,16 +169,16 @@ export class BudgetService {
     const end = new Date(start);
 
     switch (budget.period) {
-      case 'daily':
+      case BudgetPeriod.DAILY:
         end.setDate(end.getDate() + 1);
         break;
-      case 'weekly':
+      case BudgetPeriod.WEEKLY:
         end.setDate(end.getDate() + 7);
         break;
-      case 'monthly':
+      case BudgetPeriod.MONTHLY:
         end.setMonth(end.getMonth() + 1);
         break;
-      case 'yearly':
+      case BudgetPeriod.YEARLY:
         end.setFullYear(end.getFullYear() + 1);
         break;
     }

@@ -1,0 +1,120 @@
+<div class="dashboard-page">
+  <div class="page-header">
+    <h1>Dashboard Overview</h1>
+    <p class="subtitle">ภาพรวมการเงินของคุณ</p>
+  </div>
+
+  <div class="dashboard-content">
+    @if (loading) {
+    <div class="loading">กำลังโหลดข้อมูล...</div>
+    } @else if (error) {
+    <div class="error">{{ error }}</div>
+    } @else if (dashboard) {
+    <div class="overview-cards">
+      <div class="card income-card">
+        <div class="card-icon">💰</div>
+        <div class="card-content">
+          <h3>รายรับ</h3>
+          <p class="amount">฿{{ formatNumber(dashboard.overview.income) }}</p>
+          <span class="period">This Month</span>
+        </div>
+      </div>
+
+      <div class="card expense-card">
+        <div class="card-icon">💸</div>
+        <div class="card-content">
+          <h3>รายจ่าย</h3>
+          <p class="amount">฿{{ formatNumber(dashboard.overview.expense) }}</p>
+          <span class="period">เดือนนี้</span>
+        </div>
+      </div>
+
+      <div class="card balance-card">
+        <div class="card-icon">💵</div>
+        <div class="card-content">
+          <h3>ยอดคงเหลือ</h3>
+          <p class="amount" [class.negative]="dashboard.overview.balance < 0">
+            ฿{{ formatNumber(dashboard.overview.balance) }}
+          </p>
+          <span class="period">เดือนนี้</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="section">
+        <h2>รายจ่ายตามหมวดหมู่</h2>
+        @if (dashboard.byCategory.length > 0) {
+        <div class="category-list">
+          @for (item of dashboard.byCategory.slice(0, 5); track item.categoryId) {
+          <div class="category-item">
+            <span class="category-name">{{ item.categoryName || 'ไม่ระบุ' }}</span>
+            <span class="category-amount">฿{{ formatNumber(item.total) }}</span>
+          </div>
+          }
+        </div>
+        } @else {
+        <p class="empty-state">ยังไม่มีรายการ</p>
+        }
+      </div>
+
+      <div class="section">
+        <h2>รายการตามบัญชี</h2>
+        @if (dashboard.byAccount.length > 0) {
+        <div class="account-list">
+          @for (item of dashboard.byAccount.slice(0, 5); track item.accountId) {
+          <div class="account-item">
+            <span class="account-name">{{ item.accountName || 'ไม่ระบุ' }}</span>
+            <span class="account-amount">฿{{ formatNumber(item.total) }}</span>
+          </div>
+          }
+        </div>
+        } @else {
+        <p class="empty-state">ยังไม่มีรายการ</p>
+        }
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>รายการล่าสุด</h2>
+      @if (dashboard.recentTransactions.length > 0) {
+      <div class="transactions-table">
+        <table>
+          <thead>
+            <tr>
+              <th>วันที่</th>
+              <th>ประเภท</th>
+              <th>หมวดหมู่</th>
+              <th>รายละเอียด</th>
+              <th>จำนวนเงิน</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (tx of dashboard.recentTransactions; track tx._id) {
+            <tr>
+              <td>{{ formatDate(tx.date) }}</td>
+              <td>
+                <span class="badge" [class]="tx.type">
+                  {{ tx.type === 'income' ? 'รายรับ' : 'รายจ่าย' }}
+                </span>
+              </td>
+              <td>{{ tx.category?.name || '-' }}</td>
+              <td>{{ tx.description }}</td>
+              <td class="amount" [class]="tx.type">
+                {{ tx.type === 'income' ? '+' : '-' }}฿{{ formatNumber(tx.amount) }}
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="view-all">
+        <a routerLink="/transactions" class="btn-link">ดูทั้งหมด →</a>
+      </div>
+      } @else {
+      <p class="empty-state">ยังไม่มีรายการ</p>
+      }
+    </div>
+    }
+  </div>
+</div>

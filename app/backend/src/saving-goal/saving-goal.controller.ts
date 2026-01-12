@@ -11,9 +11,11 @@ import {
   Request,
 } from '@nestjs/common';
 import { SavingGoalService } from './saving-goal.service';
-import { CreateSavingGoalDto } from './dto/create-saving-goal.dto';
-import { UpdateSavingGoalDto } from './dto/update-saving-goal.dto';
-import { UpdateProgressDto } from './dto/update-progress.dto';
+import {
+  CreateSavingGoalDto,
+  UpdateSavingGoalDto,
+  UpdateProgressDto,
+} from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('saving-goals')

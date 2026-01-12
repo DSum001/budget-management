@@ -1,0 +1,175 @@
+<div class="report-page">
+  <div class="page-header">
+    <h1>รายงานและวิเคราะห์</h1>
+  </div>
+
+  <div class="report-filters">
+    <div class="filter-group">
+      <label for="period">ระยะเวลา:</label>
+      <select id="period" [(ngModel)]="selectedPeriod" (change)="loadReport()">
+        <option value="daily">รายวัน</option>
+        <option value="weekly">รายสัปดาห์</option>
+        <option value="monthly">รายเดือน</option>
+      </select>
+    </div>
+  </div>
+
+  @if (loading) {
+  <div class="loading">กำลังโหลดข้อมูล...</div>
+  } @else if (errorMessage) {
+  <div class="error-message">{{ errorMessage }}</div>
+  } @else if (report) {
+  <div class="report-content">
+    <div class="report-summary">
+      <div class="summary-card income">
+        <div class="card-icon">💰</div>
+        <div class="card-content">
+          <h3>รายรับ</h3>
+          <p class="amount">฿{{ formatNumber(report.summary.income) }}</p>
+        </div>
+      </div>
+
+      <div class="summary-card expense">
+        <div class="card-icon">💸</div>
+        <div class="card-content">
+          <h3>รายจ่าย</h3>
+          <p class="amount">฿{{ formatNumber(report.summary.expense) }}</p>
+        </div>
+      </div>
+
+      <div class="summary-card balance">
+        <div class="card-icon">💵</div>
+        <div class="card-content">
+          <h3>คงเหลือ</h3>
+          <p class="amount" [class.negative]="report.summary.balance < 0">
+            ฿{{ formatNumber(report.summary.balance) }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="report-grid">
+      <div class="report-section">
+        <h2>รายจ่ายตามหมวดหมู่</h2>
+        @if (report.byCategory && report.byCategory.length > 0) {
+        <div class="category-list">
+          @for (item of report.byCategory; track item.categoryId) {
+          <div class="list-item">
+            <div class="item-info">
+              <span class="item-icon">{{ item.categoryIcon || '📂' }}</span>
+              <div>
+                <span class="item-name">{{ item.categoryName || 'ไม่ระบุ' }}</span>
+                <span class="item-count">{{ item.count }} รายการ</span>
+              </div>
+            </div>
+            <div class="item-amount">
+              <span class="amount">฿{{ formatNumber(item.total) }}</span>
+              <div class="progress-mini">
+                <div
+                  class="progress-fill-mini"
+                  [style.width.%]="getPercentage(item.total, getTotalExpense())"
+                ></div>
+              </div>
+            </div>
+          </div>
+          }
+        </div>
+        } @else {
+        <p class="empty-state">ไม่มีข้อมูล</p>
+        }
+      </div>
+
+      <div class="report-section">
+        <h2>รายการตามบัญชี</h2>
+        @if (report.byAccount && report.byAccount.length > 0) {
+        <div class="account-list">
+          @for (item of report.byAccount; track item.accountId) {
+          <div class="list-item">
+            <div class="item-info">
+              <span class="item-icon">🏦</span>
+              <div>
+                <span class="item-name">{{ item.accountName || 'ไม่ระบุ' }}</span>
+                <span class="item-count">{{ item.count }} รายการ</span>
+              </div>
+            </div>
+            <span class="item-amount">฿{{ formatNumber(item.total) }}</span>
+          </div>
+          }
+        </div>
+        } @else {
+        <p class="empty-state">ไม่มีข้อมูล</p>
+        }
+      </div>
+    </div>
+
+    @if (report.budgetInfo) {
+    <div class="budget-section">
+      <h2>สรุปงบประมาณ</h2>
+      <div class="budget-overview">
+        <div class="budget-stat">
+          <span class="label">งบประมาณทั้งหมด</span>
+          <span class="value">฿{{ formatNumber(report.budgetInfo.totalBudget) }}</span>
+        </div>
+        <div class="budget-stat">
+          <span class="label">ใช้จ่ายไป</span>
+          <span class="value spent">฿{{ formatNumber(report.budgetInfo.totalSpent) }}</span>
+        </div>
+        <div class="budget-stat">
+          <span class="label">คงเหลือ</span>
+          <span class="value" [class.negative]="report.budgetInfo.remaining < 0">
+            ฿{{ formatNumber(report.budgetInfo.remaining) }}
+          </span>
+        </div>
+        <div class="budget-stat">
+          <span class="label">ใช้ไปแล้ว</span>
+          <span class="value percentage">{{ report.budgetInfo.percentage.toFixed(1) }}%</span>
+        </div>
+      </div>
+      <div class="budget-progress-bar">
+        <div
+          class="budget-progress-fill"
+          [style.width.%]="Math.min(report.budgetInfo.percentage, 100)"
+          [class.warning]="report.budgetInfo.percentage >= 80"
+          [class.exceeded]="report.budgetInfo.percentage > 100"
+        ></div>
+      </div>
+    </div>
+    } @if (report.trends && report.trends.length > 0) {
+    <div class="trends-section">
+      <h2>แนวโน้มรายเดือน</h2>
+      <div class="trends-chart">
+        @for (trend of report.trends; track trend._id) {
+        <div class="trend-bar">
+          <div class="trend-label">{{ trend._id }}</div>
+          <div class="trend-bars">
+            <div class="trend-income" [style.height.px]="getTrendHeight(trend.income)">
+              <span class="trend-value">฿{{ formatShort(trend.income) }}</span>
+            </div>
+            <div class="trend-expense" [style.height.px]="getTrendHeight(trend.expense)">
+              <span class="trend-value">฿{{ formatShort(trend.expense) }}</span>
+            </div>
+          </div>
+          <div class="trend-legend">
+            <span class="legend-income">รายรับ</span>
+            <span class="legend-expense">รายจ่าย</span>
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+    }
+
+    <div class="report-info">
+      <p>
+        <strong>ระยะเวลา:</strong> {{ formatDate(report.startDate) }} -
+        {{ formatDate(report.endDate) }}
+      </p>
+      <p><strong>สร้างรายงาน:</strong> {{ formatDate(currentDate) }}</p>
+    </div>
+  </div>
+  }
+
+  <div class="page-footer">
+    <a routerLink="/dashboard" class="btn-back">← กลับสู่หน้าหลัก</a>
+  </div>
+</div>

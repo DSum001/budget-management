@@ -7,9 +7,11 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { SavingGoal, GoalStatus } from './saving-goal.schema';
-import { CreateSavingGoalDto } from './dto/create-saving-goal.dto';
-import { UpdateSavingGoalDto } from './dto/update-saving-goal.dto';
-import { UpdateProgressDto } from './dto/update-progress.dto';
+import {
+  CreateSavingGoalDto,
+  UpdateSavingGoalDto,
+  UpdateProgressDto,
+} from './dto';
 
 @Injectable()
 export class SavingGoalService {

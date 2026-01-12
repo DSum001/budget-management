@@ -2,22 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-
-export interface Category {
-  _id: string;
-  name: string;
-  type: 'income' | 'expense';
-  icon?: string;
-  color?: string;
-  parentId?: string;
-  isSystem: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface CategoryTree extends Category {
-  children?: Category[];
-}
+import { Category, CategoryTree } from '../models';
 
 @Injectable({
   providedIn: 'root',

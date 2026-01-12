@@ -3,27 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, tap, catchError, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
-
-export interface User {
-  id: string;
-  email: string;
-  firstName?: string;
-  lastName?: string;
-  defaultCurrency: string;
-  preferences: {
-    language: string;
-    theme: string;
-    notifications: {
-      email: boolean;
-      push: boolean;
-    };
-  };
-}
-
-export interface LoginResponse {
-  access_token: string;
-  user: User;
-}
+import { User, LoginResponse } from '../models';
 
 @Injectable({
   providedIn: 'root',
@@ -57,10 +37,8 @@ export class AuthService {
   }
 
   login(email: string, password: string): Observable<LoginResponse> {
-    console.log('🔑 Login attempt:', { email, apiUrl: this.apiUrl });
     return this.http.post<LoginResponse>(`${this.apiUrl}/login`, { email, password }).pipe(
       tap((response) => {
-        console.log('✅ Login success:', response);
         this.saveToken(response.access_token);
         this.currentUserSubject.next(response.user);
         this.saveUserToStorage(response.user);

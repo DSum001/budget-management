@@ -2,33 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-
-export interface Budget {
-  _id: string;
-  name: string;
-  amount: number;
-  spent: number;
-  period: 'daily' | 'weekly' | 'monthly' | 'yearly';
-  category: string;
-  startDate: Date;
-  endDate?: Date;
-  alertEnabled: boolean;
-  alertThreshold: number;
-  rollover: boolean;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface BudgetStatus {
-  budgetAmount: number;
-  spent: number;
-  remaining: number;
-  percentage: number;
-  isOverBudget: boolean;
-  shouldAlert: boolean;
-  daysLeft: number;
-}
+import { Budget, BudgetStatus } from '../models';
 
 @Injectable({
   providedIn: 'root',

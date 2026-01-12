@@ -10,18 +10,18 @@ export enum BudgetPeriod {
   YEARLY = 'yearly',
 }
 
-@Schema({ timestamps: true })
+@Schema({ timestamps: true, collection: 'budgets' })
 export class Budget extends Document {
   declare _id: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: Types.ObjectId, required: true, ref: 'User' })
   userId: Types.ObjectId;
 
   @Prop({ required: true, trim: true })
   name: string;
 
-  @Prop({ type: Types.ObjectId, ref: 'Category', required: true })
-  categoryId: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: 'Category', required: false })
+  categoryId?: Types.ObjectId;
 
   @Prop({ required: true })
   amount: number;
